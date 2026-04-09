@@ -54,11 +54,13 @@ public class ResetButtonController : MonoBehaviour
     /// </summary>
     private void OnResetClicked()
     {
+        Debug.Log("🔄 点击重置按钮");
+        
         if (showConfirmDialog && confirmPanel != null)
         {
             // 显示确认对话框
             confirmPanel.SetActive(true);
-            Debug.Log("显示重置确认对话框");
+            Debug.Log("📋 显示重置确认对话框");
         }
         else
         {
@@ -72,6 +74,8 @@ public class ResetButtonController : MonoBehaviour
     /// </summary>
     private void OnConfirmYes()
     {
+        Debug.Log("✅ 确认重新开始");
+        
         if (confirmPanel != null)
         {
             confirmPanel.SetActive(false);
@@ -85,27 +89,29 @@ public class ResetButtonController : MonoBehaviour
     /// </summary>
     private void OnConfirmNo()
     {
+        Debug.Log("❌ 取消重新开始");
+        
         if (confirmPanel != null)
         {
             confirmPanel.SetActive(false);
         }
-        
-        Debug.Log("取消重置");
     }
 
     /// <summary>
-    /// 重置场景
+    /// 重置场景 - 重新开始游戏
     /// </summary>
     private void ResetScene()
     {
-        Debug.Log("重置场景...");
+        Debug.Log("🔄 重新开始游戏...");
         
         // 在重新加载场景前，清理所有可能的状态
         CleanupBeforeReset();
         
-        // 重新加载当前场景（这会重置所有对象和UI）
+        // 重新加载当前场景（这会完全重置所有对象、UI和状态）
         Scene currentScene = SceneManager.GetActiveScene();
         SceneManager.LoadScene(currentScene.name);
+        
+        Debug.Log("✅ 场景已重新加载，游戏重新开始");
     }
 
     /// <summary>
@@ -113,23 +119,35 @@ public class ResetButtonController : MonoBehaviour
     /// </summary>
     private void CleanupBeforeReset()
     {
+        Debug.Log("🧹 清理游戏状态...");
+        
         // 关闭所有可能打开的面板
         TopIconsController topIcons = FindObjectOfType<TopIconsController>();
         if (topIcons != null)
         {
             topIcons.CloseAllPanels();
+            Debug.Log("  ✓ 已关闭所有面板");
         }
         
         // 关闭确认对话框
         if (confirmPanel != null)
         {
             confirmPanel.SetActive(false);
+            Debug.Log("  ✓ 已关闭确认对话框");
+        }
+        
+        // 停止环境动态变化
+        EnvironmentManager envManager = EnvironmentManager.Instance;
+        if (envManager != null)
+        {
+            envManager.StopDynamicChange();
+            Debug.Log("  ✓ 已停止环境动态变化");
         }
         
         // 清理 PlayerPrefs 中的临时数据（如果有的话）
         // PlayerPrefs.DeleteKey("TempData");
         
-        Debug.Log("清理完成，准备重新加载场景");
+        Debug.Log("✅ 清理完成，准备重新加载场景");
     }
 
     /// <summary>
@@ -148,9 +166,7 @@ public class ResetButtonController : MonoBehaviour
         EnvironmentManager envManager = EnvironmentManager.Instance;
         if (envManager != null)
         {
-            envManager.SetTemperature(25f);
-            envManager.SetHumidity(60f);
-            envManager.SetSunlight(600f);
+            envManager.ResetToOptimal();  // 重置到最佳状态：温度26°C，湿度75%
         }
         
         // 重置生长开始控制器

@@ -24,6 +24,16 @@ namespace TreePlanQAQ.OrangeTree
         [SerializeField]
         private OrangeTreeStage currentStage = OrangeTreeStage.Seed;
         
+        [Header("产量系统")]
+        [SerializeField]
+        private int maxYield = 50; // 最大产量（公斤）
+        
+        [SerializeField]
+        private int currentYield = 50; // 当前产量（公斤）
+        
+        [SerializeField]
+        private int yieldLossPerStop = 1; // 每次停止生长损失的产量（公斤）
+        
         [Header("环境输入")]
         [SerializeField]
         [Range(-20f, 50f)]
@@ -31,7 +41,7 @@ namespace TreePlanQAQ.OrangeTree
         
         [SerializeField]
         [Range(0f, 100f)]
-        private float humidity = 60f;
+        private float humidity = 70f;  // 在65-80范围内
         
         [SerializeField]
         [Range(0f, 1000f)]
@@ -40,18 +50,22 @@ namespace TreePlanQAQ.OrangeTree
         // 事件
         public event Action<OrangeTreeStage, OrangeTreeStage> OnStageChanged;
         public event Action<float> OnGrowthUpdated;
+        public event Action<int> OnYieldChanged; // 产量变化事件
+        public event Action<int> OnHarvestComplete; // 收获完成事件
         
         // 私有变量
         private GameObject currentModel;
         private bool isTransitioning = false;
         private bool isPaused = false;
-        private bool isDead = false; // 是否处于死亡状态
+        private bool wasGrowingSuitableLastFrame = true; // 上一帧环境是否适宜
+        private bool hasHarvested = false; // 是否已经收获
         
         // 属性
         public float CurrentGrowth => currentGrowth;
         public OrangeTreeStage CurrentStage => currentStage;
         public bool IsPaused => isPaused;
-        public bool IsDead => isDead;
+        public int CurrentYield => currentYield;
+        public int MaxYield => maxYield;
         
         private void Start()
         {
@@ -70,31 +84,54 @@ namespace TreePlanQAQ.OrangeTree
                 return;
             }
             
-            // 检查环境是否适合生长（种子阶段不检查死亡）
-            bool shouldBeDead = currentStage != OrangeTreeStage.Seed && !IsEnvironmentSuitable();
+            // 检查环境是否适合生长
+            bool environmentSuitable = IsEnvironmentSuitable();
             
-            // 如果死亡状态发生变化，切换模型
-            if (shouldBeDead != isDead)
+            // 检测环境从适宜变为不适宜（停止生长）
+            if (wasGrowingSuitableLastFrame && !environmentSuitable)
             {
-                isDead = shouldBeDead;
-                StartCoroutine(SwitchToDeadOrAlive());
+                OnGrowthStopped();
             }
             
-            // 只有在存活状态下才生长
-            if (!isDead)
+            // 检测环境从不适宜恢复到适宜（恢复生长）
+            if (!wasGrowingSuitableLastFrame && environmentSuitable)
             {
-                // 计算生长
-                float envFactor = config.CalculateEnvironmentFactor(temperature, humidity, sunlight);
-                float growthDelta = config.baseGrowthRate * envFactor * Time.deltaTime;
+                ShowNormalModel();
+                Debug.Log($"✅ 环境恢复适宜，继续生长");
+            }
+            
+            // 更新上一帧状态
+            wasGrowingSuitableLastFrame = environmentSuitable;
+            
+            // 只有在环境适宜时才生长
+            if (environmentSuitable)
+            {
+                // 在适宜范围内就按基础速率生长，不计算环境因子
+                float growthDelta = config.baseGrowthRate * Time.deltaTime;
                 
+                float oldGrowth = currentGrowth;
                 currentGrowth = Mathf.Clamp(currentGrowth + growthDelta, 0f, 100f);
                 OnGrowthUpdated?.Invoke(currentGrowth);
+                
+                // 检查是否达到100%（收获）
+                if (oldGrowth < 100f && currentGrowth >= 100f && !hasHarvested)
+                {
+                    OnHarvestReached();
+                }
                 
                 // 检查是否需要切换阶段
                 OrangeTreeStage newStage = GetStageForGrowth(currentGrowth);
                 if (newStage != currentStage)
                 {
                     StartCoroutine(TransitionToStage(newStage));
+                }
+            }
+            else
+            {
+                // 环境不适宜时停止生长
+                if (Time.frameCount % 120 == 0) // 每2秒输出一次
+                {
+                    Debug.Log($"⚠️ 环境不适宜，生长已停止 - 温度:{temperature:F1}°C, 湿度:{humidity:F1}%, 当前产量:{currentYield}kg");
                 }
             }
         }
@@ -104,75 +141,110 @@ namespace TreePlanQAQ.OrangeTree
         /// </summary>
         private bool IsEnvironmentSuitable()
         {
-            if (config == null) return true;
+            // 温度范围：12.8 ~ 37°C
+            bool tempOk = temperature >= 12.8f && temperature <= 37f;
             
-            // 检查温度是否在推荐范围内
-            float tempMin = config.optimalTemperature - config.temperatureTolerance;
-            float tempMax = config.optimalTemperature + config.temperatureTolerance;
-            bool tempOk = temperature >= tempMin && temperature <= tempMax;
+            // 湿度范围：65% ~ 80%
+            bool humidOk = humidity >= 65f && humidity <= 80f;
             
-            // 检查湿度是否在推荐范围内
-            float humidMin = config.optimalHumidity - config.humidityTolerance;
-            float humidMax = config.optimalHumidity + config.humidityTolerance;
-            bool humidOk = humidity >= humidMin && humidity <= humidMax;
-            
-            // 只要温度或湿度有一个不在范围内，就不适合生长
+            // 温度和湿度都在范围内才适合生长
             return tempOk && humidOk;
         }
         
         /// <summary>
-        /// 切换到死亡或存活状态
+        /// 生长停止时调用（环境从适宜变为不适宜）
         /// </summary>
-        private IEnumerator SwitchToDeadOrAlive()
+        private void OnGrowthStopped()
         {
-            isTransitioning = true;
+            // 减少产量
+            currentYield = Mathf.Max(0, currentYield - yieldLossPerStop);
+            OnYieldChanged?.Invoke(currentYield);
             
-            // 淡出当前模型
-            if (currentModel != null)
-            {
-                yield return StartCoroutine(FadeOutModel(currentModel, 0.3f));
-                currentModel.SetActive(false);
-            }
+            // 切换到死亡模型
+            ShowDiedModel();
             
-            // 显示新模型（死亡或存活）
-            ShowCurrentStateModel();
-            
-            // 淡入新模型
-            if (currentModel != null)
-            {
-                yield return StartCoroutine(FadeInModel(currentModel, 0.3f));
-            }
-            
-            isTransitioning = false;
-            
-            Debug.Log($"🌳 {(isDead ? "💀 树木死亡" : "✅ 树木恢复")} - 当前阶段: {currentStage}");
+            Debug.Log($"⚠️ 生长停止！产量减少 {yieldLossPerStop}kg，当前产量: {currentYield}kg");
         }
         
         /// <summary>
-        /// 显示当前状态的模型（死亡或存活）
+        /// 显示死亡模型
         /// </summary>
-        private void ShowCurrentStateModel()
+        private void ShowDiedModel()
         {
             StageData stageData = stages.Find(s => s.stage == currentStage);
-            
+            if (stageData != null && stageData.diedModel != null)
+            {
+                // 隐藏正常模型
+                if (currentModel != null)
+                {
+                    currentModel.SetActive(false);
+                }
+                
+                // 显示死亡模型
+                stageData.diedModel.SetActive(true);
+                Debug.Log($"💀 切换到死亡模型: {currentStage}");
+            }
+        }
+        
+        /// <summary>
+        /// 显示正常模型（环境恢复时）
+        /// </summary>
+        private void ShowNormalModel()
+        {
+            StageData stageData = stages.Find(s => s.stage == currentStage);
             if (stageData != null)
             {
-                // 如果是死亡状态且有死亡模型，显示死亡模型
-                if (isDead && stageData.diedModel != null)
+                // 隐藏死亡模型
+                if (stageData.diedModel != null)
                 {
-                    currentModel = stageData.diedModel;
+                    stageData.diedModel.SetActive(false);
+                }
+                
+                // 显示正常模型
+                if (currentModel != null)
+                {
                     currentModel.SetActive(true);
+                    Debug.Log($"🌱 恢复正常模型: {currentStage}");
                 }
-                // 否则显示正常模型
-                else if (stageData.stageModel != null)
-                {
-                    currentModel = stageData.stageModel;
-                    currentModel.SetActive(true);
-                }
-                else
-                {
-                    Debug.LogWarning($"未找到阶段 {currentStage} 的模型");
-                }
+            }
+        }
+        
+        /// <summary>
+        /// 达到100%生长时调用（收获）
+        /// </summary>
+        private void OnHarvestReached()
+        {
+            hasHarvested = true;
+            OnHarvestComplete?.Invoke(currentYield);
+            
+            Debug.Log($"🎉 恭喜您！您已收获 {currentYield} 公斤的橘子！");
+            
+            // 停止环境动态变化
+            TreePlanQAQ.OrangeTree.EnvironmentManager envManager = FindObjectOfType<TreePlanQAQ.OrangeTree.EnvironmentManager>();
+            if (envManager != null)
+            {
+                envManager.StopDynamicChange();
+                Debug.Log("🌡️ 环境动态变化已停止");
+            }
+            
+            // 显示收获提示（可以通过UI显示）
+            ShowHarvestMessage(currentYield);
+        }
+        
+        /// <summary>
+        /// 显示收获消息
+        /// </summary>
+        private void ShowHarvestMessage(int yield)
+        {
+            // 查找并调用HarvestMessageUI
+            HarvestMessageUI harvestUI = FindObjectOfType<HarvestMessageUI>();
+            if (harvestUI != null)
+            {
+                harvestUI.ShowMessage(yield);
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ 未找到HarvestMessageUI组件，无法显示收获消息");
             }
         }
         
@@ -247,7 +319,18 @@ namespace TreePlanQAQ.OrangeTree
         private void ShowStageModel(OrangeTreeStage stage)
         {
             currentStage = stage;
-            ShowCurrentStateModel();
+            
+            StageData stageData = stages.Find(s => s.stage == currentStage);
+            
+            if (stageData != null && stageData.stageModel != null)
+            {
+                currentModel = stageData.stageModel;
+                currentModel.SetActive(true);
+            }
+            else
+            {
+                Debug.LogWarning($"未找到阶段 {currentStage} 的模型");
+            }
         }
         
         /// <summary>
@@ -286,7 +369,9 @@ namespace TreePlanQAQ.OrangeTree
         {
             currentGrowth = 0f;
             currentStage = OrangeTreeStage.Seed;
-            isDead = false;
+            currentYield = maxYield; // 重置产量到最大值
+            hasHarvested = false;
+            wasGrowingSuitableLastFrame = true;
             
             if (currentModel != null)
             {
@@ -295,7 +380,9 @@ namespace TreePlanQAQ.OrangeTree
             
             ShowStageModel(OrangeTreeStage.Seed);
             
-            Debug.Log("🔄 橘子树已重置");
+            OnYieldChanged?.Invoke(currentYield);
+            
+            Debug.Log($"🔄 橘子树已重置 - 产量: {currentYield}kg");
         }
         
         /// <summary>

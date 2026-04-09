@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   plantName: "\u6A58\u5B50\u6811"
   plantIcon: {fileID: 0}
-  baseGrowthRate: 1.2
+  baseGrowthRate: 2.4
   logisticGrowthRate: 0.6
   carryingCapacity: 100
   temperatureOptimal: 25

@@ -16,8 +16,8 @@ MonoBehaviour:
   temperatureWeight: 0.4
   humidityWeight: 0.3
   sunlightWeight: 0.3
-  optimalTemperature: 25
-  temperatureTolerance: 10
+  optimalTemperature: 50
+  temperatureTolerance: 20
   optimalHumidity: 60
   humidityTolerance: 20
   optimalSunlight: 600

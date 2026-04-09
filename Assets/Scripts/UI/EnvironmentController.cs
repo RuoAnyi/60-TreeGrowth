@@ -10,12 +10,12 @@ public class EnvironmentController : MonoBehaviour
 {
     [Header("数值范围")]
     [SerializeField] private float minTemperature = 0f;
-    [SerializeField] private float maxTemperature = 50f;
+    [SerializeField] private float maxTemperature = 100f;
     [SerializeField] private float minHumidity = 0f;
     [SerializeField] private float maxHumidity = 100f;
     
     [Header("调节步长")]
-    [SerializeField] private float temperatureStep = 1f;
+    [SerializeField] private float temperatureStep = 2f;
     [SerializeField] private float humidityStep = 5f;
     
     [Header("显示文本（可选，右侧面板用）")]
@@ -72,13 +72,7 @@ public class EnvironmentController : MonoBehaviour
     {
         if (environmentManager == null) return;
         
-        float newTemp = Mathf.Clamp(
-            environmentManager.Temperature + delta, 
-            minTemperature, 
-            maxTemperature
-        );
-        
-        environmentManager.SetTemperature(newTemp);
+        environmentManager.AdjustTemperature(delta);
         Debug.Log($"温度调整: {environmentManager.Temperature:F1}°C");
     }
 
@@ -90,13 +84,7 @@ public class EnvironmentController : MonoBehaviour
     {
         if (environmentManager == null) return;
         
-        float newHumid = Mathf.Clamp(
-            environmentManager.Humidity + delta, 
-            minHumidity, 
-            maxHumidity
-        );
-        
-        environmentManager.SetHumidity(newHumid);
+        environmentManager.AdjustHumidity(delta);
         Debug.Log($"湿度调整: {environmentManager.Humidity:F1}%");
     }
 

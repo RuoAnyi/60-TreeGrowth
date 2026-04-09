@@ -69,12 +69,34 @@ public class GrowthStartController : MonoBehaviour
                 treeController.TogglePause();
             }
             
-            Debug.Log("植物生长已开始！");
+            // 启动环境动态变化
+            EnvironmentManager envManager = EnvironmentManager.Instance;
+            if (envManager != null)
+            {
+                envManager.StartDynamicChange();
+            }
+            
+            Debug.Log("植物生长已开始！环境开始动态变化！");
         }
         else
         {
             // 之后点击：切换暂停/继续
             treeController.TogglePause();
+            
+            // 同步环境变化状态
+            EnvironmentManager envManager = EnvironmentManager.Instance;
+            if (envManager != null)
+            {
+                if (treeController.IsPaused)
+                {
+                    envManager.StopDynamicChange();
+                }
+                else
+                {
+                    envManager.StartDynamicChange();
+                }
+            }
+            
             Debug.Log($"植物生长状态: {(treeController.IsPaused ? "暂停" : "继续")}");
         }
         
@@ -108,6 +130,14 @@ public class GrowthStartController : MonoBehaviour
         if (treeController != null && !treeController.IsPaused)
         {
             treeController.TogglePause();
+        }
+        
+        // 停止环境动态变化
+        EnvironmentManager envManager = EnvironmentManager.Instance;
+        if (envManager != null)
+        {
+            envManager.StopDynamicChange();
+            envManager.ResetToOptimal();  // 重置到初始值
         }
         
         UpdateButtonState();
