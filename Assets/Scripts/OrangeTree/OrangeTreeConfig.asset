@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2786ce7f7a744904bba839b357190309, type: 3}
   m_Name: OrangeTreeConfig
   m_EditorClassIdentifier: Assembly-CSharp::TreePlanQAQ.OrangeTree.GrowthConfig
-  baseGrowthRate: 1.67
+  baseGrowthRate: 3.33
   temperatureWeight: 0.4
   humidityWeight: 0.3
   sunlightWeight: 0.3

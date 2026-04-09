@@ -141,9 +141,8 @@ namespace TreePlanQAQ.Editor
                 "OrangeTree_Seed",
                 "OrangeTree_Sprout",
                 "OrangeTree_Seeding",
-                "OrangeTree_YoungTreetree",
-                "OrangeTree_Maturetree",
-                "OrangeTree_Flowering",
+                "OrangeTree_YoungTreet",
+                "OrangeTree_MatureTree",
                 "OrangeTree_Fruting",
                 "OrangeTree_Harvest"
             };

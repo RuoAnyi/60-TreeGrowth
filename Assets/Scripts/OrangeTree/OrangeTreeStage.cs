@@ -13,9 +13,8 @@ namespace TreePlanQAQ.OrangeTree
         Seedling = 2,    // 幼苗
         YoungTree = 3,   // 小树
         MatureTree = 4,  // 成树
-        Flowering = 5,   // 开花
-        Fruiting = 6,    // 结果
-        Harvest = 7      // 成熟
+        Fruiting = 5,    // 结果
+        Harvest = 6      // 成熟
     }
     
     /// <summary>
@@ -34,6 +33,10 @@ namespace TreePlanQAQ.OrangeTree
         
         [Header("模型引用")]
         public GameObject stageModel;
+        
+        [Header("死亡模型引用")]
+        [Tooltip("当环境条件不适宜时显示的死亡模型")]
+        public GameObject diedModel;
         
         [Header("过渡设置")]
         [Range(0.1f, 5f)]

@@ -11,7 +11,7 @@ namespace TreePlanQAQ.OrangeTree
         [Header("基础生长参数")]
         [Tooltip("基础生长速率（每秒增长的百分比）")]
         [Range(0.1f, 10f)]
-        public float baseGrowthRate = 2f; // 改为2，约50秒完成生长
+        public float baseGrowthRate = 3.33f; // 约30秒完成生长（100% ÷ 3.33 ≈ 30秒）
         
         [Header("环境影响系数")]
         [Tooltip("温度影响权重")]

@@ -45,11 +45,13 @@ namespace TreePlanQAQ.OrangeTree
         private GameObject currentModel;
         private bool isTransitioning = false;
         private bool isPaused = false;
+        private bool isDead = false; // 是否处于死亡状态
         
         // 属性
         public float CurrentGrowth => currentGrowth;
         public OrangeTreeStage CurrentStage => currentStage;
         public bool IsPaused => isPaused;
+        public bool IsDead => isDead;
         
         private void Start()
         {
@@ -68,18 +70,109 @@ namespace TreePlanQAQ.OrangeTree
                 return;
             }
             
-            // 计算生长
-            float envFactor = config.CalculateEnvironmentFactor(temperature, humidity, sunlight);
-            float growthDelta = config.baseGrowthRate * envFactor * Time.deltaTime;
+            // 检查环境是否适合生长（种子阶段不检查死亡）
+            bool shouldBeDead = currentStage != OrangeTreeStage.Seed && !IsEnvironmentSuitable();
             
-            currentGrowth = Mathf.Clamp(currentGrowth + growthDelta, 0f, 100f);
-            OnGrowthUpdated?.Invoke(currentGrowth);
-            
-            // 检查是否需要切换阶段
-            OrangeTreeStage newStage = GetStageForGrowth(currentGrowth);
-            if (newStage != currentStage)
+            // 如果死亡状态发生变化，切换模型
+            if (shouldBeDead != isDead)
             {
-                StartCoroutine(TransitionToStage(newStage));
+                isDead = shouldBeDead;
+                StartCoroutine(SwitchToDeadOrAlive());
+            }
+            
+            // 只有在存活状态下才生长
+            if (!isDead)
+            {
+                // 计算生长
+                float envFactor = config.CalculateEnvironmentFactor(temperature, humidity, sunlight);
+                float growthDelta = config.baseGrowthRate * envFactor * Time.deltaTime;
+                
+                currentGrowth = Mathf.Clamp(currentGrowth + growthDelta, 0f, 100f);
+                OnGrowthUpdated?.Invoke(currentGrowth);
+                
+                // 检查是否需要切换阶段
+                OrangeTreeStage newStage = GetStageForGrowth(currentGrowth);
+                if (newStage != currentStage)
+                {
+                    StartCoroutine(TransitionToStage(newStage));
+                }
+            }
+        }
+        
+        /// <summary>
+        /// 检查环境是否适合生长
+        /// </summary>
+        private bool IsEnvironmentSuitable()
+        {
+            if (config == null) return true;
+            
+            // 检查温度是否在推荐范围内
+            float tempMin = config.optimalTemperature - config.temperatureTolerance;
+            float tempMax = config.optimalTemperature + config.temperatureTolerance;
+            bool tempOk = temperature >= tempMin && temperature <= tempMax;
+            
+            // 检查湿度是否在推荐范围内
+            float humidMin = config.optimalHumidity - config.humidityTolerance;
+            float humidMax = config.optimalHumidity + config.humidityTolerance;
+            bool humidOk = humidity >= humidMin && humidity <= humidMax;
+            
+            // 只要温度或湿度有一个不在范围内，就不适合生长
+            return tempOk && humidOk;
+        }
+        
+        /// <summary>
+        /// 切换到死亡或存活状态
+        /// </summary>
+        private IEnumerator SwitchToDeadOrAlive()
+        {
+            isTransitioning = true;
+            
+            // 淡出当前模型
+            if (currentModel != null)
+            {
+                yield return StartCoroutine(FadeOutModel(currentModel, 0.3f));
+                currentModel.SetActive(false);
+            }
+            
+            // 显示新模型（死亡或存活）
+            ShowCurrentStateModel();
+            
+            // 淡入新模型
+            if (currentModel != null)
+            {
+                yield return StartCoroutine(FadeInModel(currentModel, 0.3f));
+            }
+            
+            isTransitioning = false;
+            
+            Debug.Log($"🌳 {(isDead ? "💀 树木死亡" : "✅ 树木恢复")} - 当前阶段: {currentStage}");
+        }
+        
+        /// <summary>
+        /// 显示当前状态的模型（死亡或存活）
+        /// </summary>
+        private void ShowCurrentStateModel()
+        {
+            StageData stageData = stages.Find(s => s.stage == currentStage);
+            
+            if (stageData != null)
+            {
+                // 如果是死亡状态且有死亡模型，显示死亡模型
+                if (isDead && stageData.diedModel != null)
+                {
+                    currentModel = stageData.diedModel;
+                    currentModel.SetActive(true);
+                }
+                // 否则显示正常模型
+                else if (stageData.stageModel != null)
+                {
+                    currentModel = stageData.stageModel;
+                    currentModel.SetActive(true);
+                }
+                else
+                {
+                    Debug.LogWarning($"未找到阶段 {currentStage} 的模型");
+                }
             }
         }
         
@@ -96,8 +189,7 @@ namespace TreePlanQAQ.OrangeTree
                 stages.Add(new StageData(OrangeTreeStage.Seedling, "幼苗", 25f));
                 stages.Add(new StageData(OrangeTreeStage.YoungTree, "小树", 50f));
                 stages.Add(new StageData(OrangeTreeStage.MatureTree, "成树", 75f));
-                stages.Add(new StageData(OrangeTreeStage.Flowering, "开花", 90f));
-                stages.Add(new StageData(OrangeTreeStage.Fruiting, "结果", 95f));
+                stages.Add(new StageData(OrangeTreeStage.Fruiting, "结果", 90f));
                 stages.Add(new StageData(OrangeTreeStage.Harvest, "成熟", 100f));
             }
         }
@@ -154,19 +246,8 @@ namespace TreePlanQAQ.OrangeTree
         /// </summary>
         private void ShowStageModel(OrangeTreeStage stage)
         {
-            StageData stageData = stages.Find(s => s.stage == stage);
-            
-            if (stageData != null && stageData.stageModel != null)
-            {
-                currentModel = stageData.stageModel;
-                currentModel.SetActive(true);
-                
-                // 使用场景中预设的 Transform 值，不再硬编码覆盖
-            }
-            else
-            {
-                Debug.LogWarning($"未找到阶段 {stage} 的模型");
-            }
+            currentStage = stage;
+            ShowCurrentStateModel();
         }
         
         /// <summary>
@@ -205,6 +286,7 @@ namespace TreePlanQAQ.OrangeTree
         {
             currentGrowth = 0f;
             currentStage = OrangeTreeStage.Seed;
+            isDead = false;
             
             if (currentModel != null)
             {

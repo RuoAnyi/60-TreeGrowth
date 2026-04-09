@@ -215,7 +215,6 @@ namespace TreePlanQAQ.OrangeTree
                 case OrangeTreeStage.Seedling: return "幼苗";
                 case OrangeTreeStage.YoungTree: return "小树";
                 case OrangeTreeStage.MatureTree: return "成树";
-                case OrangeTreeStage.Flowering: return "开花";
                 case OrangeTreeStage.Fruiting: return "结果";
                 case OrangeTreeStage.Harvest: return "成熟";
                 default: return stage.ToString();

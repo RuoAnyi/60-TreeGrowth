@@ -22,8 +22,8 @@ namespace TreePlanQAQ
         public bool step2Complete = false;
         
         [Header("Step 3: 配置模型")]
-        [Tooltip("在 Setup Wizard 中配置8个阶段的模型:\n" +
-                 "Seed, Sprout, Seedling, YoungTree, MatureTree, Flowering, Fruiting, Harvest")]
+        [Tooltip("在 Setup Wizard 中配置7个阶段的模型:\n" +
+                 "Seed, Sprout, Seedling, YoungTree, MatureTree, Fruiting, Harvest")]
         public bool step3Complete = false;
         
         [Header("Step 4: 创建系统")]
