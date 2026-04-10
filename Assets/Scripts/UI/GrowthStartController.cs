@@ -44,12 +44,23 @@ public class GrowthStartController : MonoBehaviour
         
         // 初始化按钮文本和状态
         UpdateButtonState();
+
+        treeController.OnPauseStateChanged += OnTreePauseStateChanged;
         
         // 初始时暂停生长
-        if (treeController != null && !treeController.IsPaused)
+        treeController.SetPaused(true);
+        UpdateButtonState();
+    }
+
+    private void OnTreePauseStateChanged(bool paused)
+    {
+        if (!isGrowthStarted && !paused)
         {
-            treeController.TogglePause();
+            // 若由其他按钮首次切到运行中，也视为已开始生长
+            isGrowthStarted = true;
         }
+
+        UpdateButtonState();
     }
 
     /// <summary>
@@ -127,9 +138,9 @@ public class GrowthStartController : MonoBehaviour
     {
         isGrowthStarted = false;
         
-        if (treeController != null && !treeController.IsPaused)
+        if (treeController != null)
         {
-            treeController.TogglePause();
+            treeController.SetPaused(true);
         }
         
         // 停止环境动态变化
@@ -146,6 +157,11 @@ public class GrowthStartController : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (treeController != null)
+        {
+            treeController.OnPauseStateChanged -= OnTreePauseStateChanged;
+        }
+
         if (startButton != null)
         {
             startButton.onClick.RemoveAllListeners();

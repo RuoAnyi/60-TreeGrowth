@@ -65,8 +65,18 @@ public class TopIconsController : MonoBehaviour
         // 初始化暂停图标
         UpdatePauseIcon();
 
+        if (treeController != null)
+        {
+            treeController.OnPauseStateChanged += OnTreePauseStateChanged;
+        }
+
         // 自动绑定面板内的关闭按钮
         BindPanelCloseButtons();
+    }
+
+    private void OnTreePauseStateChanged(bool paused)
+    {
+        UpdatePauseIcon();
     }
 
     private void BindPanelCloseButtons()
@@ -130,6 +140,7 @@ public class TopIconsController : MonoBehaviour
         if (treeController != null && !wasPausedBeforePanel && treeController.IsPaused)
         {
             treeController.TogglePause();
+            UpdatePauseIcon();
             Debug.Log("关闭设置面板，恢复果树生长");
         }
 
@@ -149,6 +160,7 @@ public class TopIconsController : MonoBehaviour
         if (treeController != null && !wasPausedBeforePanel && treeController.IsPaused)
         {
             treeController.TogglePause();
+            UpdatePauseIcon();
             Debug.Log("关闭提示面板，恢复果树生长");
         }
 
@@ -176,6 +188,7 @@ public class TopIconsController : MonoBehaviour
                     if (!treeController.IsPaused)
                     {
                         treeController.TogglePause();
+                        UpdatePauseIcon();
                         Debug.Log("打开设置面板，暂停果树生长");
                     }
                 }
@@ -223,6 +236,7 @@ public class TopIconsController : MonoBehaviour
                     if (!treeController.IsPaused)
                     {
                         treeController.TogglePause();
+                        UpdatePauseIcon();
                         Debug.Log("打开提示面板，暂停果树生长");
                     }
                 }
@@ -320,6 +334,7 @@ public class TopIconsController : MonoBehaviour
         if (anyPanelWasOpen && treeController != null && !wasPausedBeforePanel && treeController.IsPaused)
         {
             treeController.TogglePause();
+            UpdatePauseIcon();
             Debug.Log("关闭所有面板，恢复果树生长");
         }
     }
@@ -334,6 +349,9 @@ public class TopIconsController : MonoBehaviour
         
         if (pauseButton != null)
             pauseButton.onClick.RemoveAllListeners();
+
+        if (treeController != null)
+            treeController.OnPauseStateChanged -= OnTreePauseStateChanged;
 
         if (settingsCloseButton != null)
             settingsCloseButton.onClick.RemoveAllListeners();

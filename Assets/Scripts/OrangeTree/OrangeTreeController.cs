@@ -52,6 +52,7 @@ namespace TreePlanQAQ.OrangeTree
         public event Action<float> OnGrowthUpdated;
         public event Action<int> OnYieldChanged; // 产量变化事件
         public event Action<int> OnHarvestComplete; // 收获完成事件
+        public event Action<bool> OnPauseStateChanged; // 暂停状态变化事件
         
         // 私有变量
         private GameObject currentModel;
@@ -406,6 +407,7 @@ namespace TreePlanQAQ.OrangeTree
         {
             isPaused = !isPaused;
             Debug.Log($"🌳 OrangeTreeController ({gameObject.name}) 生长{(isPaused ? "暂停" : "继续")} - isPaused = {isPaused}");
+            OnPauseStateChanged?.Invoke(isPaused);
         }
         
         /// <summary>
@@ -413,8 +415,14 @@ namespace TreePlanQAQ.OrangeTree
         /// </summary>
         public void SetPaused(bool paused)
         {
+            if (isPaused == paused)
+            {
+                return;
+            }
+
             isPaused = paused;
             Debug.Log($"🌳 OrangeTreeController ({gameObject.name}) 生长{(isPaused ? "暂停" : "继续")} - isPaused = {isPaused}");
+            OnPauseStateChanged?.Invoke(isPaused);
         }
     }
 }
